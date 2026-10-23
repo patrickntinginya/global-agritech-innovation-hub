@@ -203,7 +203,7 @@ export default {
       media: { title: 'Maktaba ya media', desc: 'Vinjari mafaili ya mfano yaliyopakiwa.' },
       messages: { title: 'Ujumbe wa mawasiliano', desc: 'Soma ujumbe wa mfano kutoka fomu ya mawasiliano.' },
       notifications: { title: 'Arifa', desc: 'Simamia matangazo ya mfano kwa watumiaji.' },
-      seo: { title: 'Mipangilio ya SEO', desc: 'Hariri vichwa na maelezo ya mfano ya kurasa.' },
+      seo: { title: 'Mipangilio ya SEO', desc: 'Kichwa na maelezo chaguomsingi ya tovuti ya umma.' },
       settings: { title: 'Mipangilio ya jukwaa', desc: 'Mfano wa mipangilio ya jumla.' },
     },
     overview: {

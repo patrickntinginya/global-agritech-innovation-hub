@@ -38,7 +38,7 @@ export default {
     mainNav: 'Main navigation',
     footerNav: 'Footer navigation',
     language: 'Language',
-    saveItem: 'Save {title} for this visit',
+    saveItem: 'Save {title}',
     unsaveItem: 'Remove {title} from saved items',
     searchLabel: 'Search the Hub',
   },

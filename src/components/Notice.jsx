@@ -1,7 +1,9 @@
+import { hasSampleContent } from '../lib/sampleContent.js';
 import Icon from './Icon.jsx';
 
 // kind: 'info' (neutral), 'demo' (sample content), 'backend' (needs a server, arrives in a later phase)
 export default function Notice({ kind = 'info', title, children }) {
+  if (kind === 'demo' && !hasSampleContent()) return null;
   return (
     <aside className={`notice notice--${kind}`} role="note">
       <Icon name={kind === 'backend' ? 'shield' : 'leaf'} size={20} />

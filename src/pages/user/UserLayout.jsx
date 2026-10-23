@@ -15,11 +15,6 @@ export default function UserLayout() {
   const { t } = useI18n();
   return (
     <div className="container user-shell">
-      <div className="user-shell__banner">
-        <Notice kind="backend" title={t('user.prototypeTitle')}>
-          {t('user.prototype')}
-        </Notice>
-      </div>
       <nav className="side-nav" aria-label={t('user.navLabel')}>
         <ul>
           {links.map((l) => (

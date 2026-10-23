@@ -26,7 +26,8 @@ import SearchResults from './pages/SearchResults.jsx';
 import About from './pages/About.jsx';
 import Contact from './pages/Contact.jsx';
 import LegalPage from './pages/LegalPage.jsx';
-import { SignIn, Register } from './pages/Auth.jsx';
+import { SignIn, Register, ForgotPassword, ResetPassword } from './pages/Auth.jsx';
+import RequireAuth from './auth/RequireAuth.jsx';
 import NotFound from './pages/NotFound.jsx';
 
 // The user area and the admin interface are separate bundles: visitors who never open them do not download them.
@@ -72,7 +73,6 @@ export default function App() {
         <Route path="startups/:id" element={<StartupProfile />} />
         <Route path="organizations/:id" element={<OrganizationProfile />} />
         <Route path="partnerships" element={<Partnerships />} />
-        <Route path="submit" element={<Submit />} />
         <Route path="search" element={<SearchResults />} />
         <Route path="about" element={<About />} />
         <Route path="contact" element={<Contact />} />
@@ -80,19 +80,26 @@ export default function App() {
         <Route path="terms" element={<LegalPage kind="terms" />} />
         <Route path="signin" element={<SignIn />} />
         <Route path="register" element={<Register />} />
-        <Route element={later(UserLayout)}>
-          <Route path="dashboard" element={later(Dashboard)} />
-          <Route path="profile" element={later(Profile)} />
-          <Route path="saved" element={later(Saved)} />
-          <Route path="notifications" element={later(Notifications)} />
-          <Route path="settings" element={later(Settings)} />
+        <Route path="forgot-password" element={<ForgotPassword />} />
+        <Route path="reset-password" element={<ResetPassword />} />
+        <Route element={<RequireAuth />}>
+          <Route path="submit" element={<Submit />} />
+          <Route element={later(UserLayout)}>
+            <Route path="dashboard" element={later(Dashboard)} />
+            <Route path="profile" element={later(Profile)} />
+            <Route path="saved" element={later(Saved)} />
+            <Route path="notifications" element={later(Notifications)} />
+            <Route path="settings" element={later(Settings)} />
+          </Route>
         </Route>
         <Route path="*" element={<NotFound />} />
       </Route>
-      <Route path="/admin" element={later(AdminLayout)}>
-        <Route index element={later(AdminOverview)} />
-        <Route path="settings" element={later(AdminSettings)} />
-        <Route path=":section" element={later(AdminSection)} />
+      <Route element={<RequireAuth admin />}>
+        <Route path="/admin" element={later(AdminLayout)}>
+          <Route index element={later(AdminOverview)} />
+          <Route path="settings" element={later(AdminSettings)} />
+          <Route path=":section" element={later(AdminSection)} />
+        </Route>
       </Route>
     </Routes>
   );

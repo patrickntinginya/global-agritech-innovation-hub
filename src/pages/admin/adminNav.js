@@ -1,0 +1,21 @@
+// Sidebar order for the admin interface. `key` also selects the translation `admin.sections.<key>.title`.
+export const adminNav = [
+  { to: '/admin', key: 'overview', end: true },
+  { to: '/admin/innovations', key: 'innovations' },
+  { to: '/admin/categories', key: 'categories' },
+  { to: '/admin/countries', key: 'countries' },
+  { to: '/admin/articles', key: 'articles' },
+  { to: '/admin/courses', key: 'courses' },
+  { to: '/admin/experts', key: 'experts' },
+  { to: '/admin/startups', key: 'startups' },
+  { to: '/admin/organizations', key: 'organizations' },
+  { to: '/admin/partnerships', key: 'partnerships' },
+  { to: '/admin/community', key: 'community' },
+  { to: '/admin/submissions', key: 'submissions' },
+  { to: '/admin/messages', key: 'messages' },
+  { to: '/admin/users', key: 'users' },
+  { to: '/admin/media', key: 'media' },
+  { to: '/admin/notifications', key: 'notifications' },
+  { to: '/admin/seo', key: 'seo' },
+  { to: '/admin/settings', key: 'settings' },
+];

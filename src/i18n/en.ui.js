@@ -67,4 +67,6 @@ export default {
     relatedLearning: 'Related courses',
     relatedReading: 'Related reading',
   },
+  adm: { v: { crops: 'Crops', learning: 'Learning' , general: 'General', listing: 'List my innovation', partnership: 'Partnership', feedback: 'Feedback', problem: 'Report a problem'} },
+  notifications: { kinds: { system: 'System' } },
 };

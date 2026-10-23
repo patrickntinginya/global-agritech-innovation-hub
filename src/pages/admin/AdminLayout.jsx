@@ -2,14 +2,16 @@ import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import Icon from '../../components/Icon.jsx';
 import LanguageSelect from '../../components/LanguageSelect.jsx';
-import PrototypeNotice from '../../components/PrototypeNotice.jsx';
 import ScrollToTop from '../../components/ScrollToTop.jsx';
-import { adminSections } from './adminConfig.jsx';
 import { useI18n } from '../../i18n/index.jsx';
+import { useAuth } from '../../auth/AuthContext.jsx';
+import { adminNav } from './adminNav.js';
 
-// Separate shell for the admin interface. No access control exists in Phase 1: anyone can open it.
+// Separate shell for the admin interface. It is only rendered inside <RequireAuth admin>; the data itself is protected by
+// database policies, so opening an admin URL without the role shows errors and never data.
 export default function AdminLayout() {
   const { t } = useI18n();
+  const { user, signOut } = useAuth();
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
   useEffect(() => setOpen(false), [pathname]);
@@ -24,16 +26,17 @@ export default function AdminLayout() {
           <Icon name={open ? 'x' : 'menu'} />
         </button>
         <strong className="admin-top__title">{t('admin.title')}</strong>
-        <span className="demo-badge">{t('admin.demoBadge')}</span>
+        <span className="demo-badge">{t('admin.signedInAs', { email: user?.email ?? '' })}</span>
         <div className="admin-top__tools">
           <LanguageSelect tone="light" />
           <Link to="/" className="btn btn--ghost btn--sm">{t('admin.backToSite')}</Link>
+          <button type="button" className="btn btn--ghost btn--sm" onClick={signOut}>{t('account.signOut')}</button>
         </div>
       </header>
       <div className="admin-body">
         <nav id="admin-nav" className={`admin-nav ${open ? 'is-open' : ''}`} aria-label={t('admin.navLabel')}>
           <ul>
-            {adminSections.map((s) => (
+            {adminNav.map((s) => (
               <li key={s.key}>
                 <NavLink to={s.to} end={s.end}>{t(`admin.sections.${s.key}.title`)}</NavLink>
               </li>
@@ -41,7 +44,6 @@ export default function AdminLayout() {
           </ul>
         </nav>
         <main id="admin-main" className="admin-main" tabIndex={-1}>
-          <PrototypeNotice kind="admin" />
           <Outlet />
         </main>
       </div>

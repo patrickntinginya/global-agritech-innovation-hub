@@ -9,6 +9,7 @@ import usePageTitle from '../hooks/usePageTitle.js';
 import useAsync from '../hooks/useAsync.js';
 import { useI18n } from '../i18n/index.jsx';
 import { useBookmarks } from '../context/BookmarksContext.jsx';
+import SaveButton from '../components/SaveButton.jsx';
 import { getArticle, listArticlesFor } from '../services/contentService.js';
 import { categoryById } from '../data/categories.js';
 
@@ -27,10 +28,11 @@ function Article({ article }) {
       <PageHeader
         title={title}
         description={loc(article.summary)}
-        demo
+        demo={article.isSample}
         crumbs={[{ label: t('nav.home'), to: '/' }, { label: t('library.title'), to: '/library' }, { label: title }]}
       >
         <span className="badge-pill">{t(`research.types.${article.type}`)}</span>
+        <SaveButton kind="article" id={article.id} title={title} className="btn btn--ghost" />
       </PageHeader>
       <section className="section section--compact">
         <div className="container article-grid">

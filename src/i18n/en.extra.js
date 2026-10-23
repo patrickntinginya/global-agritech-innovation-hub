@@ -203,7 +203,7 @@ export default {
       media: { title: 'Media library', desc: 'Browse sample uploaded files.' },
       messages: { title: 'Contact messages', desc: 'Read sample messages from the contact form.' },
       notifications: { title: 'Notifications', desc: 'Manage sample announcements for users.' },
-      seo: { title: 'SEO settings', desc: 'Edit sample page titles and descriptions.' },
+      seo: { title: 'SEO settings', desc: 'Default page title and description for the public site.' },
       settings: { title: 'Platform settings', desc: 'General settings preview.' },
     },
     overview: {

@@ -11,18 +11,18 @@ import usePageTitle from '../hooks/usePageTitle.js';
 import useAsync from '../hooks/useAsync.js';
 import { useI18n } from '../i18n/index.jsx';
 import { useBookmarks } from '../context/BookmarksContext.jsx';
+import SaveButton from '../components/SaveButton.jsx';
 import { getInnovation, listRelatedInnovations } from '../services/innovationService.js';
 import { categoryById } from '../data/categories.js';
 import { countryById } from '../data/countries.js';
 
 function Detail({ item }) {
   const { t, loc } = useI18n();
-  const { has, toggle, recordView } = useBookmarks();
+  const { recordView } = useBookmarks();
   const related = useAsync(() => listRelatedInnovations(item.id), [item.id]);
   const title = loc(item.title);
   const category = categoryById[item.categoryId];
   const country = countryById[item.countryId];
-  const saved = has(item.id);
   usePageTitle(title);
 
   useEffect(() => {
@@ -37,15 +37,7 @@ function Detail({ item }) {
         demo
         crumbs={[{ label: t('nav.home'), to: '/' }, { label: t('nav.explore'), to: '/explore' }, { label: title }]}
       >
-        <button
-          type="button"
-          className={`btn ${saved ? 'btn--primary' : 'btn--ghost'}`}
-          aria-pressed={saved}
-          onClick={() => toggle(item.id)}
-        >
-          <Icon name="bookmark" size={18} className={saved ? 'icon--filled' : ''} />
-          {t(saved ? 'actions.saved' : 'actions.save')}
-        </button>
+        <SaveButton id={item.id} title={title} className="btn btn--ghost" />
       </PageHeader>
 
       <section className="section section--compact">

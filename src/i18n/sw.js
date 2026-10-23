@@ -38,7 +38,7 @@ export default {
     mainNav: 'Urambazaji mkuu',
     footerNav: 'Urambazaji wa chini',
     language: 'Lugha',
-    saveItem: 'Hifadhi {title} kwa ziara hii',
+    saveItem: 'Hifadhi {title}',
     unsaveItem: 'Ondoa {title} kwenye vilivyohifadhiwa',
     searchLabel: 'Tafuta kwenye Kituo',
   },

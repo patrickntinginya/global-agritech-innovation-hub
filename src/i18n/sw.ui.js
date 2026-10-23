@@ -67,4 +67,6 @@ export default {
     relatedLearning: 'Kozi zinazohusiana',
     relatedReading: 'Usomaji unaohusiana',
   },
+  adm: { v: { crops: 'Mazao', learning: 'Mafunzo' , general: 'Jumla', listing: 'Orodhesha ubunifu wangu', partnership: 'Ushirikiano', feedback: 'Maoni', problem: 'Ripoti tatizo'} },
+  notifications: { kinds: { system: 'Mfumo' } },
 };

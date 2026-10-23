@@ -1,72 +1,58 @@
 import { Link } from 'react-router-dom';
-import AsyncView from '../../components/AsyncView.jsx';
+import DataLoader from '../../components/DataLoader.jsx';
 import usePageTitle from '../../hooks/usePageTitle.js';
 import useAsync from '../../hooks/useAsync.js';
 import { useI18n } from '../../i18n/index.jsx';
-import { countByCategory } from '../../services/innovationService.js';
-import { categories } from '../../data/categories.js';
-import { innovations } from '../../data/innovations.js';
-import { knowledgeItems } from '../../data/knowledge.js';
-import { courses } from '../../data/courses.js';
-import { experts } from '../../data/experts.js';
-import { startups } from '../../data/startups.js';
-import { discussions } from '../../data/discussions.js';
-import { adminMessages, adminUsers } from '../../data/adminData.js';
+import { overviewCounts, recentAudit } from '../../services/adminService.js';
 
+const cards = [
+  { key: 'published', field: 'innovPublished', to: '/admin/innovations' },
+  { key: 'drafts', field: 'innovDraft', to: '/admin/innovations' },
+  { key: 'articles', field: 'articles', to: '/admin/articles' },
+  { key: 'courses', field: 'courses', to: '/admin/courses' },
+  { key: 'pendingSubmissions', field: 'pendingSubs', to: '/admin/submissions' },
+  { key: 'newMessages', field: 'newMessages', to: '/admin/messages' },
+  { key: 'members', field: 'members', to: '/admin/users' },
+];
+
+// Real counts from the database. Nothing here is invented: an empty database shows zeros and an empty activity list.
 export default function AdminOverview() {
-  const { t, loc } = useI18n();
+  const { t } = useI18n();
   usePageTitle(t('admin.sections.overview.title'));
-  const counts = useAsync(countByCategory, []);
-  const cards = [
-    { key: 'innovations', n: innovations.length, to: '/admin/innovations' },
-    { key: 'articles', n: knowledgeItems.length, to: '/admin/articles' },
-    { key: 'courses', n: courses.length, to: '/admin/courses' },
-    { key: 'experts', n: experts.length, to: '/admin/experts' },
-    { key: 'startups', n: startups.length, to: '/admin/startups' },
-    { key: 'community', n: discussions.length, to: '/admin/community' },
-    { key: 'users', n: adminUsers.length, to: '/admin/users' },
-    { key: 'messages', n: adminMessages.filter((m) => m.status === 'new').length, to: '/admin/messages' },
-  ];
+  const counts = useAsync(overviewCounts, []);
+  const audit = useAsync(() => recentAudit(10), []);
   return (
     <>
       <div className="admin-head"><div><h1>{t('admin.sections.overview.title')}</h1><p className="muted">{t('admin.sections.overview.desc')}</p></div></div>
-      <ul className="stat-grid">
-        {cards.map((c) => (
-          <li key={c.key}>
-            <Link to={c.to}>
-              <span className="stat__n">{c.n}</span>
-              <span className="stat__label">{t(`admin.overview.cards.${c.key}`)}</span>
-            </Link>
-          </li>
-        ))}
-      </ul>
-
-      <div className="dash-grid">
-        <section className="panel" aria-labelledby="ov-chart">
-          <h2 id="ov-chart">{t('admin.overview.byCategory')}</h2>
-          <AsyncView state={counts} rows={2}>
-            {(data) => {
-              const max = Math.max(1, ...Object.values(data));
-              return (
-                <ul className="bar-chart">
-                  {categories.map((c) => (
-                    <li key={c.id}>
-                      <span className="bar-chart__label">{loc(c.title)}</span>
-                      <span className="bar-chart__track" aria-hidden="true"><span style={{ width: `${((data[c.id] ?? 0) / max) * 100}%` }} /></span>
-                      <span className="bar-chart__n">{data[c.id] ?? 0}</span>
-                    </li>
-                  ))}
-                </ul>
-              );
-            }}
-          </AsyncView>
-        </section>
-        <section className="panel" aria-labelledby="ov-act">
-          <h2 id="ov-act">{t('admin.overview.activity')}</h2>
-          <p className="muted small">{t('admin.overview.activityNote')}</p>
-          <ul className="activity-list">{t('admin.overview.activityItems').map((a) => <li key={a}>{a}</li>)}</ul>
-        </section>
-      </div>
+      <DataLoader result={counts} rows={1}>
+        {(data) => (
+          <ul className="stat-grid">
+            {cards.map((c) => (
+              <li key={c.key}>
+                <Link to={c.to}>
+                  <span className="stat__n">{data[c.field]}</span>
+                  <span className="stat__label">{t(`admin.ov.${c.key}`)}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </DataLoader>
+      <section className="panel" aria-labelledby="ov-act">
+        <h2 id="ov-act">{t('admin.ov.recent')}</h2>
+        <p className="muted small">{t('admin.ov.recentNote')}</p>
+        <DataLoader result={audit} rows={1}>
+          {(events) => (events.length === 0
+            ? <p className="muted">{t('admin.ov.noEvents')}</p>
+            : (
+              <ul className="activity-list">
+                {events.map((e) => (
+                  <li key={e.id}>{t(`admin.ov.action.${e.action}`)}: {e.table_name} · {String(e.created_at).slice(0, 16).replace('T', ' ')}</li>
+                ))}
+              </ul>
+            ))}
+        </DataLoader>
+      </section>
     </>
   );
 }

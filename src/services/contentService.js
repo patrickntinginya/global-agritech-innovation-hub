@@ -1,155 +1,172 @@
-// Service boundary for non-innovation content. Pages call these functions, never the data files.
-// Phase 2 swaps each body for a Supabase query that returns the same shapes.
-import { knowledgeItems } from '../data/knowledge.js';
-import { courses as rawCourses } from '../data/courses.js';
-import { experts as rawExperts } from '../data/experts.js';
-import { discussions } from '../data/discussions.js';
-import { startups as rawStartups } from '../data/startups.js';
-import { opportunities, challenges, organizations as rawOrganizations } from '../data/partnerships.js';
-import { innovations } from '../data/innovations.js';
-import { categoryById } from '../data/categories.js';
-import { matches, delay } from './textMatch.js';
+// Content from Supabase (articles, courses, experts, community, startups, partnerships, search).
+// Same exported names and view-model shapes as Phase 1. Every public read filters status = 'published' in the query.
+import { getClient } from '../lib/supabase.js';
+import { exec, likePattern } from './errors.js';
+import {
+  mapArticle, mapCourse, mapExpert, mapStartup, mapOrganization, mapOpportunity, mapChallenge, mapDiscussion, mapInnovation,
+} from './mappers.js';
 
-// Filters from the URL use 'all' for "no filter".
 const on = (v) => Boolean(v) && v !== 'all';
-const byDateDesc = (a, b) => (b.date ?? '').localeCompare(a.date ?? '');
-const paginate = (list, page = 1, pageSize = 6) => {
-  const total = list.length;
-  const pageCount = Math.max(1, Math.ceil(total / pageSize));
-  const current = Math.min(Math.max(1, Number(page) || 1), pageCount);
-  return { items: list.slice((current - 1) * pageSize, current * pageSize), total, page: current, pageCount };
-};
-
-// View models: the data files keep their own field names, pages read these.
-const courses = rawCourses.map((c) => ({
-  ...c,
-  topic: c.category,
-  sector: c.category === 'livestock' ? 'livestock' : 'crop',
-  categoryIds: [c.relatedCategoryId],
-}));
-const experts = rawExperts.map((e) => ({ ...e, title: e.areaLabel }));
-const startupNeeds = {
-  s1: { en: ['Pilot farms', 'Distribution partners'], sw: ['Mashamba ya majaribio', 'Washirika wa usambazaji'] },
-  s2: { en: ['Veterinary partners', 'Pilot herds'], sw: ['Washirika wa huduma za mifugo', 'Makundi ya majaribio'] },
-  s3: { en: ['Farmer groups', 'Grant funding'], sw: ['Vikundi vya wakulima', 'Ufadhili wa ruzuku'] },
-  s4: { en: ['Buyers', 'Mobile network partners'], sw: ['Wanunuzi', 'Washirika wa mitandao ya simu'] },
-  s5: { en: ['Agronomy partners', 'Pilot farms'], sw: ['Washirika wa kilimo', 'Mashamba ya majaribio'] },
-  s6: { en: ['Field data', 'University partners'], sw: ['Data za shambani', 'Washirika wa vyuo'] },
-};
-const startups = rawStartups.map((s) => ({
-  ...s,
-  summary: s.description,
-  focus: s.categoryId,
-  needs: startupNeeds[s.id] ?? { en: [], sw: [] },
-  innovationIds: innovations.filter((i) => i.categoryId === s.categoryId).slice(0, 2).map((i) => i.id),
-}));
-const organizations = rawOrganizations.map((g) => ({ ...g, kind: g.type, name: typeof g.name === 'string' ? { en: g.name, sw: g.name } : g.name }));
+const LIST_LIMIT = 200;
+const pub = (table, columns = '*', opts) => getClient().from(table).select(columns, opts).eq('status', 'published');
+const keyword = (query, q) => (q && q.trim().length > 0 ? query.ilike('search_text', likePattern(q)) : query);
 
 // ---- Articles ----
-export async function listArticles({ q = '', type = '', sector = '', categoryId = '' } = {}) {
-  await delay();
-  return knowledgeItems
-    .filter((a) => (!on(type) || a.type === type) && (!on(sector) || a.sector === sector || a.sector === 'both') && (!categoryId || a.categoryIds.includes(categoryId)))
-    .filter((a) => matches(q, a.title, a.summary, a.body))
-    .sort(byDateDesc);
+function articleQuery({ q = '', type = '', sector = '', categoryId = '' } = {}, opts) {
+  let query = pub('articles', '*', opts);
+  if (on(type)) query = query.eq('type', type);
+  if (on(sector)) query = query.in('sector', [sector, 'both']);
+  if (categoryId) query = query.contains('category_ids', [categoryId]);
+  return keyword(query, q).order('published_on', { ascending: false }).order('slug');
+}
+export async function listArticles(filters = {}) {
+  const { data } = await exec(articleQuery(filters).limit(LIST_LIMIT));
+  return data.map(mapArticle);
 }
 export async function queryArticles({ page = 1, pageSize = 6, ...filters } = {}) {
-  return paginate(await listArticles(filters), page, pageSize);
+  const size = Math.min(Math.max(1, Number(pageSize) || 6), 50);
+  const run = (n) => exec(articleQuery(filters, { count: 'exact' }).range((n - 1) * size, n * size - 1));
+  let current = Math.max(1, Number(page) || 1);
+  let res = await run(current);
+  const total = res.count ?? res.data.length;
+  const pageCount = Math.max(1, Math.ceil(total / size));
+  if (current > pageCount) {
+    current = pageCount;
+    res = await run(current);
+  }
+  return { items: res.data.map(mapArticle), total, page: current, pageCount };
 }
 // Related reading for a page: filter by category and/or sector, skip one id, cap the length.
 export async function listArticlesFor({ categoryId = '', sector = '', excludeId = '', limit = 4 } = {}) {
-  await delay(60);
-  let list = knowledgeItems.filter((a) => a.id !== excludeId && (!categoryId || a.categoryIds.includes(categoryId)) && (!sector || a.sector === sector || a.sector === 'both'));
-  if (list.length === 0 && categoryId) list = knowledgeItems.filter((a) => a.id !== excludeId);
-  return list.sort(byDateDesc).slice(0, limit);
+  const fetchList = async (cat) => {
+    let query = pub('articles').neq('slug', excludeId || '');
+    if (cat) query = query.contains('category_ids', [cat]);
+    if (sector) query = query.in('sector', [sector, 'both']);
+    return (await exec(query.order('published_on', { ascending: false }).limit(limit))).data;
+  };
+  let rows = await fetchList(categoryId);
+  if (rows.length === 0 && categoryId) {
+    rows = (await exec(pub('articles').neq('slug', excludeId || '').order('published_on', { ascending: false }).limit(limit))).data;
+  }
+  return rows.map(mapArticle);
 }
-export async function getArticle(id) {
-  await delay();
-  return knowledgeItems.find((a) => a.id === id) ?? null;
+export async function getArticle(slug) {
+  const { data } = await exec(pub('articles').eq('slug', String(slug)).limit(1));
+  return data[0] ? mapArticle(data[0]) : null;
 }
 
 // ---- Courses ----
 export async function listCourses({ q = '', topic = '', level = '' } = {}) {
-  await delay();
-  return courses.filter((c) => (!on(topic) || c.topic === topic) && (!on(level) || c.level === level) && matches(q, c.title, c.description, c.modules));
+  let query = pub('courses');
+  if (on(topic)) query = query.eq('topic', topic);
+  if (on(level)) query = query.eq('level', level);
+  const { data } = await exec(keyword(query, q).order('slug').limit(LIST_LIMIT));
+  return data.map(mapCourse);
 }
 export const queryCourses = listCourses;
 export async function listCoursesFor({ categoryId = '', sector = '', excludeId = '', limit = 3 } = {}) {
-  await delay(60);
-  let list = courses.filter((c) => c.id !== excludeId && (!categoryId || c.categoryIds.includes(categoryId)) && (!sector || c.sector === sector));
-  if (list.length === 0 && categoryId) list = courses.filter((c) => c.id !== excludeId && c.sector === (categoryById[categoryId]?.id === 'livestock-technology' ? 'livestock' : 'crop'));
-  return list.slice(0, limit);
+  const fetchList = async (cat) => {
+    let query = pub('courses').neq('slug', excludeId || '');
+    if (cat) query = query.eq('related_category_id', cat);
+    if (sector === 'livestock') query = query.eq('topic', 'livestock');
+    else if (sector) query = query.neq('topic', 'livestock');
+    return (await exec(query.order('slug').limit(limit))).data;
+  };
+  let rows = await fetchList(categoryId);
+  if (rows.length === 0 && categoryId) {
+    let query = pub('courses').neq('slug', excludeId || '');
+    query = categoryId === 'livestock-technology' ? query.eq('topic', 'livestock') : query.neq('topic', 'livestock');
+    rows = (await exec(query.order('slug').limit(limit))).data;
+  }
+  return rows.map(mapCourse);
 }
-export async function getCourse(id) {
-  await delay();
-  return courses.find((c) => c.id === id) ?? null;
+export async function getCourse(slug) {
+  const { data } = await exec(pub('courses').eq('slug', String(slug)).limit(1));
+  return data[0] ? mapCourse(data[0]) : null;
 }
 
 // ---- Experts ----
 export async function listExperts({ q = '', area = '' } = {}) {
-  await delay();
-  return experts.filter((e) => (!on(area) || e.area === area) && matches(q, e.name, e.areaLabel, e.bio, e.expertise));
+  let query = pub('experts');
+  if (on(area)) query = query.eq('area', area);
+  const { data } = await exec(keyword(query, q).order('name').limit(LIST_LIMIT));
+  return data.map(mapExpert);
 }
 export const queryExperts = listExperts;
 
 // ---- Community ----
 export async function listDiscussions({ q = '', topic = '', kind = '' } = {}) {
-  await delay();
-  return discussions.filter((d) => (!on(topic) || d.topic === topic) && (!on(kind) || d.kind === kind) && matches(q, d.title, d.body)).sort(byDateDesc);
+  let query = pub('discussions', '*, discussion_replies(id, accepted, status)');
+  if (on(topic)) query = query.eq('topic', topic);
+  if (on(kind)) query = query.eq('kind', kind);
+  const { data } = await exec(keyword(query, q).order('posted_on', { ascending: false }).order('created_at', { ascending: false }).limit(LIST_LIMIT));
+  return data.map(mapDiscussion);
 }
 export const queryDiscussions = listDiscussions;
-export async function getDiscussion(id) {
-  await delay();
-  return discussions.find((d) => d.id === id) ?? null;
+export async function getDiscussion(slug) {
+  const query = pub('discussions', '*, discussion_replies(*)').eq('slug', String(slug)).order('created_at', { referencedTable: 'discussion_replies', ascending: true }).limit(1);
+  const { data } = await exec(query);
+  return data[0] ? mapDiscussion(data[0]) : null;
 }
 
 // ---- Startups and partnerships ----
 export async function listStartups({ q = '', stage = '', focus = '' } = {}) {
-  await delay();
-  return startups.filter((s) => (!on(stage) || s.stage === stage) && (!on(focus) || s.focus === focus) && matches(q, s.name, s.description, s.solutions));
+  let query = pub('startups');
+  if (on(stage)) query = query.eq('stage', stage);
+  if (on(focus)) query = query.eq('category_id', focus);
+  const { data } = await exec(keyword(query, q).order('name').limit(LIST_LIMIT));
+  return data.map(mapStartup);
 }
 export const queryStartups = listStartups;
-export async function getStartup(id) {
-  await delay();
-  return startups.find((s) => s.id === id) ?? null;
+export async function getStartup(slug) {
+  const { data } = await exec(pub('startups').eq('slug', String(slug)).limit(1));
+  if (!data[0]) return null;
+  const startup = mapStartup(data[0]);
+  const related = await exec(pub('innovations', 'slug').eq('category_id', startup.categoryId).order('added_on', { ascending: false }).limit(2));
+  return { ...startup, innovationIds: related.data.map((r) => r.slug) };
 }
 export async function listOpportunities({ type = '' } = {}) {
-  await delay();
-  return opportunities.filter((o) => !on(type) || o.type === type);
+  let query = pub('partnerships').eq('kind', 'opportunity');
+  if (on(type)) query = query.eq('subtype', type);
+  const { data } = await exec(query.order('created_at').order('slug').limit(LIST_LIMIT));
+  return data.map(mapOpportunity);
 }
 export async function listChallenges() {
-  await delay();
-  return challenges;
+  const { data } = await exec(pub('partnerships').eq('kind', 'challenge').order('created_at').order('slug').limit(LIST_LIMIT));
+  return data.map(mapChallenge);
 }
 export async function listOrganizations() {
-  await delay();
-  return organizations;
+  const { data } = await exec(pub('organizations').order('slug').limit(LIST_LIMIT));
+  return data.map(mapOrganization);
 }
-export async function getOrganization(id) {
-  await delay();
-  return organizations.find((g) => g.id === id) ?? null;
+export async function getOrganization(slug) {
+  const { data } = await exec(pub('organizations').eq('slug', String(slug)).limit(1));
+  return data[0] ? mapOrganization(data[0]) : null;
 }
 
-// Opportunities (kind = type), challenges and organizations, as stored in data/partnerships.js.
+// Opportunities (kind = type), challenges and organizations.
 export async function listPartnerships() {
-  await delay();
-  return {
-    opportunities: opportunities.map((o) => ({ ...o, kind: o.type })),
-    challenges,
-    organizations,
-  };
+  const [opportunities, challenges, organizations] = await Promise.all([listOpportunities(), listChallenges(), listOrganizations()]);
+  return { opportunities: opportunities.map((o) => ({ ...o, kind: o.type })), challenges, organizations };
 }
 
 // ---- Global search across innovations, articles, courses, experts and startups ----
 export async function searchAll(q = '') {
-  await delay();
   const query = q.trim();
-  if (!query) return { innovations: [], articles: [], courses: [], experts: [], startups: [] };
+  if (query.length < 2) return { innovations: [], articles: [], courses: [], experts: [], startups: [] };
+  const limit = (table, order) => keyword(pub(table), query).order(order.col, { ascending: order.asc }).limit(8);
+  const [innovations, articles, courses, experts, startups] = await Promise.all([
+    exec(limit('innovations', { col: 'added_on', asc: false })),
+    exec(limit('articles', { col: 'published_on', asc: false })),
+    exec(limit('courses', { col: 'slug', asc: true })),
+    exec(limit('experts', { col: 'name', asc: true })),
+    exec(limit('startups', { col: 'name', asc: true })),
+  ]);
   return {
-    innovations: innovations.filter((i) => matches(query, i.title, i.summary, i.benefits, categoryById[i.categoryId]?.title)),
-    articles: knowledgeItems.filter((a) => matches(query, a.title, a.summary, a.body)).sort(byDateDesc),
-    courses: courses.filter((c) => matches(query, c.title, c.description, c.modules)),
-    experts: experts.filter((e) => matches(query, e.name, e.areaLabel, e.bio, e.expertise)),
-    startups: startups.filter((s) => matches(query, s.name, s.description, s.solutions)),
+    innovations: innovations.data.map(mapInnovation),
+    articles: articles.data.map(mapArticle),
+    courses: courses.data.map(mapCourse),
+    experts: experts.data.map(mapExpert),
+    startups: startups.data.map(mapStartup),
   };
 }

@@ -18,7 +18,7 @@ const merge = (...parts) => {
   }
   return out;
 };
-const dict = async (lang) => merge(...(await Promise.all(['', '.pages', '.panels', '.admin', '.extra', '.runtime', '.gaps', '.ui'].map(async (s) => (await load(`i18n/${lang}${s}.js`)).default))));
+const dict = async (lang) => merge(...(await Promise.all(['', '.pages', '.panels', '.admin', '.extra', '.runtime', '.gaps', '.ui', '.phase2', '.wording'].map(async (s) => (await load(`i18n/${lang}${s}.js`)).default))));
 const flat = (o, p = '') => Object.entries(o).flatMap(([k, v]) => (v && typeof v === 'object' && !Array.isArray(v) ? flat(v, `${p}${k}.`) : [[`${p}${k}`, v]]));
 
 const en = await dict('en');

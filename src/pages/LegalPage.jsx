@@ -13,7 +13,7 @@ export default function LegalPage({ kind }) {
       <PageHeader title={title} description={t(`legal.${kind}.intro`)} crumbs={[{ label: t('nav.home'), to: '/' }, { label: title }]} />
       <section className="section section--compact">
         <div className="container narrow prose">
-          <Notice kind="demo" title={t('legal.draftLine')}>
+          <Notice kind="info" title={t('legal.draftLine')}>
             {t('legal.draftNotice')}
           </Notice>
           {t(`${kind}.sections`).map((s) => (

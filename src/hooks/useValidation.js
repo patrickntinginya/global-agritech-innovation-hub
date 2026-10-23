@@ -1,13 +1,9 @@
 import { useCallback, useState } from 'react';
+import { rules } from '../utils/rules.js';
 
 // Small form helper. `rules` maps field name -> array of validator functions
 // (value, allValues) => errorKey | null. Error keys are translated by the form, not here.
-export const rules = {
-  required: (v) => (String(v ?? '').trim() ? null : 'ui.errors.required'),
-  email: (v) => (!String(v ?? '').trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v).trim()) ? null : 'ui.errors.email'),
-  min: (n) => (v) => (!String(v ?? '').trim() || String(v).trim().length >= n ? null : { key: 'ui.errors.min', vars: { n } }),
-  match: (other) => (v, all) => (v === all[other] ? null : 'ui.errors.match'),
-};
+export { rules };
 
 export default function useValidation(schema) {
   const [errors, setErrors] = useState({});

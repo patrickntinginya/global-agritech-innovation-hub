@@ -15,6 +15,10 @@ import enGaps from './en.gaps.js';
 import swGaps from './sw.gaps.js';
 import enUi from './en.ui.js';
 import swUi from './sw.ui.js';
+import enPhase2 from './en.phase2.js';
+import enWording from './en.wording.js';
+import swPhase2 from './sw.phase2.js';
+import swWording from './sw.wording.js';
 
 // Dictionaries are split by area (core, public pages, user area and admin) and deep-merged here.
 // Each English file has a Kiswahili twin with identical keys (checked by scripts/check-i18n.mjs).
@@ -29,8 +33,8 @@ function merge(...parts) {
   return out;
 }
 const dictionaries = {
-  en: merge(enCore, enPages, enPanels, enAdmin, enExtra, enRuntime, enGaps, enUi),
-  sw: merge(swCore, swPages, swPanels, swAdmin, swExtra, swRuntime, swGaps, swUi),
+  en: merge(enCore, enPages, enPanels, enAdmin, enExtra, enRuntime, enGaps, enUi, enPhase2, enWording),
+  sw: merge(swCore, swPages, swPanels, swAdmin, swExtra, swRuntime, swGaps, swUi, swPhase2, swWording),
 };
 export const LANGUAGES = [
   { code: 'en', label: 'English' },

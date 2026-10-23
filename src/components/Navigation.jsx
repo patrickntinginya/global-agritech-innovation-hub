@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import Icon from './Icon.jsx';
 import Logo from './Logo.jsx';
+import AccountActions from './AccountActions.jsx';
 import LanguageSelect from './LanguageSelect.jsx';
 import SearchModal from './SearchModal.jsx';
 import { mainNav } from '../data/routes.js';
@@ -43,12 +44,7 @@ export default function Navigation() {
           </ul>
           <div className="primary-nav__actions-mobile">
             <LanguageSelect tone="light" />
-            <NavLink to="/signin" className="btn btn--ghost">
-              {t('actions.signIn')}
-            </NavLink>
-            <NavLink to="/register" className="btn btn--accent">
-              {t('actions.join')}
-            </NavLink>
+            <AccountActions />
           </div>
         </nav>
 
@@ -64,12 +60,7 @@ export default function Navigation() {
           <div className="hide-below-wide">
             <LanguageSelect tone="light" />
           </div>
-          <NavLink to="/signin" className="btn btn--ghost hide-below-wide">
-            {t('actions.signIn')}
-          </NavLink>
-          <NavLink to="/register" className="btn btn--accent hide-below-wide">
-            {t('actions.join')}
-          </NavLink>
+          <AccountActions className="hide-below-wide" />
           <button
             type="button"
             className="icon-btn menu-toggle"

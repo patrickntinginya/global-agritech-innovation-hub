@@ -5,6 +5,7 @@ import { TextField, SelectField } from '../components/forms.jsx';
 import usePageTitle from '../hooks/usePageTitle.js';
 import useValidation, { rules } from '../hooks/useValidation.js';
 import { useI18n } from '../i18n/index.jsx';
+import { sendContactMessage } from '../services/accountService.js';
 
 const schema = {
   name: [rules.required],
@@ -18,12 +19,12 @@ export default function Contact() {
   const { t } = useI18n();
   usePageTitle(t('footer.contact'));
   const [form, setForm] = useState({ name: '', email: '', reason: 'general', subject: '', message: '' });
-  const [checked, setChecked] = useState(false);
+  const [state, setState] = useState({ busy: false, sent: false, error: null });
   const { errors, validate, clearError } = useValidation(schema);
   const set = (k) => (v) => {
     setForm((f) => ({ ...f, [k]: v }));
     clearError(k);
-    setChecked(false);
+    setState((s) => ({ ...s, sent: false }));
   };
   return (
     <>
@@ -33,9 +34,17 @@ export default function Contact() {
           <form
             noValidate
             className="form-card"
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
-              setChecked(validate(form));
+              if (!validate(form)) return;
+              setState({ busy: true, sent: false, error: null });
+              try {
+                await sendContactMessage(form);
+                setForm({ name: '', email: '', reason: 'general', subject: '', message: '' });
+                setState({ busy: false, sent: true, error: null });
+              } catch (err) {
+                setState({ busy: false, sent: false, error: err });
+              }
             }}
           >
             <TextField label={t('forms.name')} value={form.name} onValue={set('name')} error={errors.name} required autoComplete="name" />
@@ -43,19 +52,20 @@ export default function Contact() {
             <SelectField label={t('contact.reason')} value={form.reason} onValue={set('reason')} options={reasons.map((r) => ({ value: r, label: t(`contact.reasons.${r}`) }))} />
             <TextField label={t('contact.subject')} value={form.subject} onValue={set('subject')} error={errors.subject} required />
             <TextField label={t('forms.message')} as="textarea" rows={6} value={form.message} onValue={set('message')} error={errors.message} required />
-            {checked && (
-              <Notice kind="backend" title={t('ui.previewTitle')}>
-                {t('contact.previewNote')}
+            {state.sent && (
+              <Notice kind="info" title={t('contact.sentTitle')}>
+                {t('contact.sent')}
               </Notice>
             )}
-            <button type="submit" className="btn btn--primary">
-              {t('contact.check')}
+            {state.error && <p className="form-field__error" role="alert">{t(`errors.service.${state.error.code ?? 'unknown'}.body`)}</p>}
+            <button type="submit" className="btn btn--primary" disabled={state.busy}>
+              {state.busy ? t('account.sending') : t('contact.send')}
             </button>
           </form>
           <aside className="detail-side">
             <h2 className="side-heading">{t('contact.detailsTitle')}</h2>
-            <Notice kind="backend" title={t('contact.noticeTitle')}>
-              {t('contact.notice')}
+            <Notice kind="info" title={t('contact.storedTitle')}>
+              {t('contact.stored')}
             </Notice>
             <p className="muted">{t('contact.noDetails')}</p>
           </aside>
